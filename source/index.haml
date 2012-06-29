@@ -1,0 +1,43 @@
+---
+layout: default
+---
+.slide-wrapper
+  %section.slide.center.intro
+    %h1 Metaprogramming in the Wild
+    %h2.slide Source-Diving FactoryGirl
+
+  %section.slide.center.author
+    %h1 Josh Clayton
+    %h2 thoughtbot, inc.
+
+  %section.slide.metaprogramming
+    %h1 What is Metaprogramming?
+    %blockquote Writing code that writes code during runtime
+
+  %section.slide.standalone.metaprogramming
+    %h1 Common Uses
+
+  %section.slide.metaprogramming
+    %h1 DSLs
+    %ul
+      %li.slide FactoryGirl
+      %li.slide Rails' router
+      %li.slide RSpec
+      %li.slide shoulda-context
+
+  %section.slide.metaprogramming
+    %h1 Search/Query APIs
+    %ul
+      %li.slide Searchlogic
+      %li.slide ActiveRecord's finders/scopes
+
+  %section.slide.standalone.achieve
+    %h1 Different Ways to Achieve
+
+  %section.slide.achieve
+    %h1 Object Definition
+    %ul
+      %li.slide
+        %code Class.new
+      %li.slide
+        %code Module.new

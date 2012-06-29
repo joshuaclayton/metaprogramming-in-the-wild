@@ -1,0 +1,69 @@
+Meta-Programming in the Wild: Source-diving factory girl
+
+# What is Meta-Programming
+
+* Changing the behavior of an application at runtime
+
+
+# Common uses
+
+## DSLs
+* Factory Girl
+* Rails' router
+* RSpec
+* shoulda-context
+
+## Search/Query APIs
+* Searchlogic
+* ActiveRecord's finders/scopes
+
+# Different ways to achieve
+
+## Object Definition
+* `Class.new`
+* `Module.new`
+
+## Method Definition
+* `instance_eval`
+* `class_eval`/`module_eval`
+* `instance_exec`
+* `module_exec`
+* `define_method`
+* `def`
+
+## Code Execution
+* `method_missing`
+* `send`
+* `instance_exec`
+
+## Accessing `self`
+* `singleton_class`
+
+# Uses in the Wild
+
+* Factory Girl allows attributes to be defined in any order
+  Diagram DefinitionProxy => declared attributes on a Definition =>
+    AttributeList (array of Attribute instances)
+  Attribute responds to `#to_proc` and knows how to convert all attributes to procs
+  EvaluatorClassDefiner gets instantiated and creates a subclass of Evaluator,
+    one for each factory, which has the full inheritance chain of factories,
+    receives an AttributeList, and defines methods on itself class for each attribute
+  When the factory is run (build, create, etc.), the evaluator is instantiated
+    with the build class, strategy, and overrides; overrides are defined
+    dynamically on the singleton class with define_attribute, just like when
+    the evaluator class is being created initially
+  The Evaluator instance has all attributes available from the definition, as
+    well as any overrides, as methods. It also has access to an instance of the
+    object so attributes in FG can refer to methods on the instance created
+  The AttributeAssigner actually manages invoking each method on the Evaluator
+    to assign the results to the result instance (or hash in the case of
+    `attributes_for`
+
+
+# Things to remember
+* *Context* is king
+* Understand the usage
+* Documentation is hard (how do you document methods that don't exist?)
+* Better interface to something potentially hairy
+* Hard to track down bugs
+* *HARD TO TRACK DOWN BUGS*
