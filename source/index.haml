@@ -9,35 +9,392 @@ layout: default
   %section.slide.center.author
     %h1 Josh Clayton
     %h2 thoughtbot, inc.
+    %h3
+      %code @joshuaclayton
 
-  %section.slide.metaprogramming
+  %section.slide
     %h1 What is Metaprogramming?
     %blockquote Writing code that writes code during runtime
 
-  %section.slide.standalone.metaprogramming
+  %section.slide
+    %h1 What is Meta Fog?
+    %blockquote when something is so self-referential (i.e., meta), that it looses all meaning because it is too confusing to follow. A good example is the movie Inception.
+
+  %section.slide.standalone
     %h1 Common Uses
 
-  %section.slide.metaprogramming
-    %h1 DSLs
-    %ul
-      %li.slide FactoryGirl
-      %li.slide Rails' router
-      %li.slide RSpec
-      %li.slide shoulda-context
+  %section.slide.code
+    %h1 Rails' Router
+    :hamlcode
+      Portal::Application.routes.draw do
+        devise_for :users
 
-  %section.slide.metaprogramming
-    %h1 Search/Query APIs
-    %ul
-      %li.slide Searchlogic
-      %li.slide ActiveRecord's finders/scopes
+        authenticated do
+          root to: 'admin/posts#index'
+        end
 
-  %section.slide.standalone.achieve
-    %h1 Different Ways to Achieve
+        unauthenticated do
+          root to: 'high_voltage/pages#show', id: 'home'
+        end
+      end
 
-  %section.slide.achieve
-    %h1 Object Definition
-    %ul
-      %li.slide
-        %code Class.new
-      %li.slide
-        %code Module.new
+  %section.slide.code
+    %h1 ActiveRecord Finders
+    :hamlcode
+      User.find_by_email('josh@thoughtbot.com')
+      User.find_all_by_admin(true)
+
+  %section.slide.code
+    %h1 FactoryGirl
+    :hamlcode
+      FactoryGirl.define do
+        factory :user do
+          name 'John Doe'
+        end
+
+        factory :order do
+          user
+        end
+      end
+
+  %section.slide
+    %h1 Method Invocation
+    :markdown
+      * `method_missing`
+      * `respond_to?`
+      * `respond_to_missing?`
+
+  %section.slide.code
+    %h1 FactoryGirl Example
+    :hamlcode
+      sequence(:email) { |n| "p\#{n}@example.com" }
+      factory :user do
+        email                           # implicit
+        avatar factory: :default_avatar # association
+        name 'John Doe'                 # static
+        date_of_birth { 21.years.ago }  # dynamic
+      end
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Source
+    :hamlcode
+      # lib/factory_girl/definition_proxy.rb
+      def method_missing(name, *args, &block)
+        if args.empty? && block.nil?
+          @definition.declare_attribute(Declaration::Implicit.new(name, @definition, @ignore))
+        elsif args.first.respond_to?(:has_key?) && args.first.has_key?(:factory)
+          association(name, *args)
+        else
+          add_attribute(name, *args, &block)
+        end
+      end
+
+  %section.slide
+    %h1 Singleton Class / Eigenclass
+    .slide
+      %img{src: '/images/boottime-classes.png'}
+      %audio{autoplay: false, src: '/images/bwaw.wav', type: 'audio/wav'}
+
+  %section.slide
+    %h1 Code Contexts
+    :markdown
+      * `instance_eval`
+      * `instance_exec`
+      * `class_eval`/`module_eval`
+      * `class_exec`/`module_exec`
+
+  %section.slide.code
+    %h1 instance_*
+    :hamlcode
+      /* vm_eval.c */
+      VALUE
+      rb_obj_instance_eval(int argc, VALUE *argv, VALUE self)
+      {
+          VALUE klass;
+          klass = rb_singleton_class(self);
+          return specific_eval(argc, argv, klass, self);
+      }
+
+      VALUE
+      rb_obj_instance_exec(int argc, VALUE *argv, VALUE self)
+      {
+          VALUE klass;
+          klass = rb_singleton_class(self);
+          return yield_under(klass, self, rb_ary_new4(argc, argv));
+      }
+
+  %section.slide.code
+    %h1 module_*
+    :hamlcode
+      /* vm_eval.c */
+      VALUE
+      rb_mod_module_eval(int argc, VALUE *argv, VALUE mod)
+      {
+          return specific_eval(argc, argv, mod, mod);
+      }
+
+      VALUE
+      rb_mod_module_exec(int argc, VALUE *argv, VALUE mod)
+      {
+          return yield_under(mod, mod, rb_ary_new4(argc, argv));
+      }
+
+  %section.slide.code
+    %h1 FactoryGirl Example
+    :hamlcode
+      factory :post do
+        ignore do
+          comment_count 0
+        end
+
+        after :create do |post, evaluation|
+          create_list :comment, evaluation.comment_count, post: post
+        end
+      end
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Source
+    :hamlcode
+      # lib/factory_girl/callback.rb
+      def run(instance, evaluator)
+        case block.arity
+        when 1 then syntax_runner.instance_exec(instance, &block)
+        when 2 then syntax_runner.instance_exec(instance, evaluator, &block)
+        else        syntax_runner.instance_exec(&block)
+        end
+      end
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Example
+    :hamlcode
+      # lib/factory_girl.rb
+      register_strategy(:build,          FactoryGirl::Strategy::Build)
+      register_strategy(:create,         FactoryGirl::Strategy::Create)
+      register_strategy(:attributes_for, FactoryGirl::Strategy::AttributesFor)
+      register_strategy(:build_stubbed,  FactoryGirl::Strategy::Stub)
+      register_strategy(:null,           FactoryGirl::Strategy::Null)
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Source
+    :hamlcode
+      # lib/factory_girl/strategy_syntax_method_registrar.rb
+      def define_singular_strategy_method
+        strategy_name = @strategy_name
+
+        define_syntax_method(strategy_name) do |name, *traits_and_overrides, &block|
+          FactoryRunner.new(name, strategy_name, traits_and_overrides).run(&block)
+        end
+      end
+
+      def define_list_strategy_method
+        strategy_name = @strategy_name
+
+        define_syntax_method("\#{strategy_name}_list") do |name, amount, *traits_and_overrides|
+          amount.times.map { send(strategy_name, name, *traits_and_overrides) }
+        end
+      end
+
+      def define_syntax_method(name, &block)
+        FactoryGirl::Syntax::Methods.module_exec do
+          define_method(name, &block)
+        end
+      end
+
+  %section.slide
+    %h1 Anonymous Classes
+    :markdown
+      * `Class.new`
+      * `Module.new`
+
+  %section.slide.code.long-lines
+    %h1 Defining Anonymous Classes
+    :hamlcode
+      search_results = [
+        Twitter::Status.new('text' => 'Ruby is fun!'),
+        Twitter::Status.new('text' => 'Metaprogramming is fun!')
+      ]
+      fake_twitter = Class.new
+      fake_twitter.singleton_class.send :define_method, :search do
+        search_results
+      end
+
+      searcher = ServiceSearcher.new('search term', fake_twitter)
+      searcher.results.should == search_results
+
+  %section.slide.code
+    %h1 With a Different Superclass
+    :hamlcode
+      admin_user = Class.new(User) do
+        def admin?
+          true
+        end
+      end
+
+      admin_user.new.admin? # true
+
+  %section.slide.code
+    %h1 FactoryGirl Example
+    :hamlcode
+      factory :user do
+        email { "\#{name.parameterize}@example.com" }
+        sequence(:name) { |n| "Person \#{n}" }
+      end
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Source
+    :hamlcode
+      # lib/factory_girl/evaluator_class_definer.rb
+      def initialize(attributes, parent_class)
+        @parent_class = parent_class
+        @attributes   = attributes
+
+        attributes.each do |attribute|
+          evaluator_class.define_attribute(attribute.name, &attribute.to_proc)
+        end
+      end
+
+      def evaluator_class
+        @evaluator_class ||= Class.new(@parent_class).tap do |klass|
+          klass.attribute_lists ||= []
+          klass.attribute_lists += [@attributes]
+        end
+      end
+
+  %section.slide
+    %h1 Defining Methods Dynamically
+    :markdown
+      * `define_method`
+
+  %section.slide.code.long-lines
+    %h1 FactoryGirl Source
+    :hamlcode
+      # lib/factory_girl/evaluator.rb
+      def initialize(build_strategy, overrides = {})
+        # ...
+
+        @overrides.each do |name, value|
+          singleton_class.define_attribute(name) { value }
+        end
+      end
+
+      def self.define_attribute(name, &block)
+        define_method(name) do
+          if @cached_attributes.key?(name)
+            @cached_attributes[name]
+          else
+            @cached_attributes[name] = instance_exec(&block)
+          end
+        end
+      end
+
+  %section.slide.code.long-lines
+    %h1 Practical Application
+    :hamlcode
+      user = User.new('John Doe')
+
+      Timecop.freeze 1.day.ago do
+        order = Order.new
+        user.orders.push order
+        order.items.push Item.new('Bread', 2.50.to_money)
+        order.items.push Item.new('Coke', 1.50.to_money)
+        order.apply_discount 1.to_money
+      end
+
+      Timecop.freeze 5.days.ago do
+        order = Order.new
+        user.orders.push order
+        8.times do
+          order.items.push Item.new('Yogurt', 0.50.to_money)
+        end
+        order.apply_discount 1.to_money
+        order.apply_discount 1.50.to_money
+      end
+
+      user.orders.length.should == 2
+      user.orders.sum(&:price).should == 4.50.to_money
+
+  %section.slide.code.long-lines
+    %h1 Practical Application
+    :hamlcode
+      user = User.new('John Doe')
+
+      OrdersCreator.new(user) do
+        order 1.day.ago do
+          item 'Bread', 2.50.to_money
+          item 'Coke', 1.50.to_money
+
+          coupon 1.to_money
+        end
+
+        order 5.days.ago do
+          8.times { item 'Yogurt', 0.50.to_money }
+
+          coupon 1.to_money
+          coupon 1.50.to_money
+        end
+      end
+
+  %section.slide.code.long-lines
+    %h1 OrdersCreator Source
+    :hamlcode
+      class OrdersCreator
+        def initialize(user, &block)
+          @user = user
+          instance_eval &block
+        end
+
+        def order(occurred_at, &block)
+          Timecop.freeze(occurred_at) do
+            OrderCreator.new(@user, &block)
+          end
+        end
+      end
+
+  %section.slide.code.long-lines
+    %h1 OrderCreator Source
+    :hamlcode
+      class OrderCreator
+        def initialize(user, &block)
+          @order = Order.new
+          user.orders.push @order
+
+          instance_eval &block
+        end
+
+        def item(name, price)
+          @order.items.push Item.new(name, price)
+        end
+
+        def coupon(amount)
+          @order.apply_discount(amount)
+        end
+      end
+
+  %section.slide.standalone
+    %h1 Documentation?
+
+  %section.slide.code
+    %h1 YARD
+    :hamlcode
+      # @!method create(name, *traits_and_overrides, &block)
+      # (see #strategy_method)
+      # Creates a registered factory by name.
+      # @return [Object] instantiated object defined by the factory
+
+      # @!method strategy_method
+      # @!visibility private
+      # @param [Symbol] name name of the factory to build
+      # @param [Array<Symbol, Symbol, Hash>] traits_and_overrides splat args traits and a hash of overrides
+      # @param [Proc] block block to be executed
+
+  %section.slide.standalone
+    %h1 Speed
+
+  %section.slide
+    %img{src: '/images/speed.jpg', height: 600}
+
+  %section.slide.standalone
+    %h1 Tradeoffs
+
+  %section.slide.standalone
+    %h1 Questions

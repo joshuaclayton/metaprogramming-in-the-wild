@@ -3,9 +3,9 @@
 # ----------------------- #
 
 url: http://yoursite.com
-title: My Octopress Blog
-subtitle: A blogging framework for hackers.
-author: Your Name
+title: Metaprogramming in the Wild
+subtitle: Source-Diving FactoryGirl
+author: Josh Clayton
 simple_search: http://google.com/search
 description:
 
